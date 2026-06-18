@@ -19,8 +19,14 @@ import os
 # Absolute path to the database file.
 # We build it from this file's location so the app works no matter where
 # you run `python app.py` from.
+#
+# On a host like Render you can set the DATABASE_PATH environment variable to
+# point at a mounted persistent disk (e.g. /var/data/tasks.db) so the data
+# survives redeploys. If the variable is not set, we fall back to a local file.
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATABASE_PATH = os.path.join(BASE_DIR, "tasks.db")
+DATABASE_PATH = os.environ.get(
+    "DATABASE_PATH", os.path.join(BASE_DIR, "tasks.db")
+)
 
 
 def get_connection():
@@ -43,6 +49,12 @@ def init_db():
     This is called once when the application starts (see app.py).
     If the table already exists, this function does nothing harmful.
     """
+    # Make sure the folder that will hold the database file exists. This
+    # matters when DATABASE_PATH points at a mounted disk like /var/data.
+    db_dir = os.path.dirname(DATABASE_PATH)
+    if db_dir:
+        os.makedirs(db_dir, exist_ok=True)
+
     connection = get_connection()
     cursor = connection.cursor()
 

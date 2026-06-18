@@ -137,6 +137,50 @@ On first run, the app inserts these example tasks so the page isn't empty:
 
 ---
 
+## ☁️ Deploy to Render.com
+
+This repo is ready to deploy on [Render](https://render.com) — it includes a
+`render.yaml` blueprint, a `Procfile`, and `gunicorn` (a production server).
+
+**Option A — Blueprint (easiest):**
+
+1. Push this project to GitHub (already done if you cloned it from there).
+2. In the [Render dashboard](https://dashboard.render.com), click
+   **New → Blueprint**.
+3. Connect your GitHub account and select the `task-manager` repository.
+4. Render reads `render.yaml`, sets everything up, and clicks **Apply**.
+5. When the build finishes, open the `https://<your-app>.onrender.com` URL.
+
+**Option B — Manual Web Service:**
+
+1. **New → Web Service**, connect the repo.
+2. Set:
+   - **Build Command:** `pip install -r requirements.txt`
+   - **Start Command:** `gunicorn app:app --bind 0.0.0.0:$PORT`
+3. (Optional) Add an env var `SECRET_KEY` with any long random string.
+4. Click **Create Web Service**.
+
+> ⚠️ **Important — data persistence.**
+> Render's **free** tier has an *ephemeral* filesystem: the `tasks.db` file is
+> **wiped on every redeploy or restart**, and the sample data is recreated.
+> That's fine for a demo. To keep your data permanently you must either:
+> - attach a **persistent disk** (paid plan) — uncomment the `disk:` block and
+>   the `DATABASE_PATH` env var in `render.yaml`, **or**
+> - switch the storage to a managed **PostgreSQL** database.
+>
+> The app reads the optional `DATABASE_PATH` environment variable, so you can
+> point SQLite at a mounted disk (e.g. `/var/data/tasks.db`) without code changes.
+
+**Environment variables the app understands:**
+
+| Variable        | Purpose                                          | Default          |
+|-----------------|--------------------------------------------------|------------------|
+| `PORT`          | Port to listen on (Render sets this for you)     | `5000`           |
+| `SECRET_KEY`    | Secret used to sign sessions / flash messages    | a dev placeholder|
+| `DATABASE_PATH` | Where the SQLite file lives (use for a disk)     | `./tasks.db`     |
+
+---
+
 ## ❓ Troubleshooting
 
 - **`python` not found** → try `python3` instead.

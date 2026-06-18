@@ -1,0 +1,50 @@
+# render.yaml
+# -----------
+# Render "Blueprint" file. With this in your repo you can deploy by going to
+# https://dashboard.render.com -> New -> Blueprint, and pointing it at this
+# GitHub repository. Render reads the settings below automatically.
+#
+# You can also deploy without this file by creating a "Web Service" manually
+# and copying the buildCommand / startCommand into the dashboard.
+
+services:
+  - type: web              # a public web service
+    name: task-manager     # the service name (change if you like)
+    runtime: python
+    plan: free             # the free tier (see the disk note below)
+    region: oregon         # pick a region near you (oregon, frankfurt, singapore...)
+
+    # Install dependencies.
+    buildCommand: "pip install -r requirements.txt"
+
+    # Start the app with gunicorn (a production WSGI server).
+    # "app:app" means: in app.py, use the Flask object named `app`.
+    # Render provides the $PORT it expects the app to listen on.
+    startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT"
+
+    envVars:
+      # Pin the Python version Render uses.
+      - key: PYTHON_VERSION
+        value: "3.12.4"
+      # A real secret for signing sessions / flash messages.
+      # generateValue lets Render create a secure random value for you.
+      - key: SECRET_KEY
+        generateValue: true
+
+    # ------------------------------------------------------------------
+    # OPTIONAL: persistent storage for the SQLite database.
+    #
+    # The free plan filesystem is EPHEMERAL: tasks.db is wiped on every
+    # redeploy/restart. To keep your data, attach a persistent disk (this
+    # requires a paid instance type) and uncomment the block below plus the
+    # DATABASE_PATH env var. The disk is mounted at /var/data and the app
+    # reads DATABASE_PATH from the environment.
+    # ------------------------------------------------------------------
+    # disk:
+    #   name: task-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
+    #
+    # (also add this under envVars above:)
+    #   - key: DATABASE_PATH
+    #     value: /var/data/tasks.db

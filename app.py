@@ -19,6 +19,8 @@ Run the app with:
 Then open http://127.0.0.1:5000 in your browser.
 """
 
+import os
+
 from flask import (
     Flask,
     render_template,
@@ -35,9 +37,9 @@ import database  # our own database.py module
 app = Flask(__name__)
 
 # A secret key is required to use flash() messages (the little notifications
-# shown after adding/editing/deleting). For a real production app you would
-# load this from an environment variable instead of hard-coding it.
-app.secret_key = "change-this-secret-key-in-production"
+# shown after adding/editing/deleting). In production (e.g. on Render) set the
+# SECRET_KEY environment variable; locally we fall back to a default value.
+app.secret_key = os.environ.get("SECRET_KEY", "change-this-secret-key-in-production")
 
 # Make sure the database and table exist before we serve any request.
 database.init_db()
@@ -156,6 +158,10 @@ def api_task(task_id):
 
 
 if __name__ == "__main__":
-    # debug=True gives helpful error pages and auto-reloads when you edit code.
-    # Turn this off in a real production deployment.
-    app.run(debug=True)
+    # This block only runs for LOCAL development (python app.py).
+    # On Render the app is started by gunicorn instead (see render.yaml / README),
+    # which imports the `app` object above and never runs this block.
+    #
+    # We read PORT from the environment if present, otherwise default to 5000.
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
