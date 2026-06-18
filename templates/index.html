@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <!-- Makes the page responsive / mobile friendly -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Task Manager</title>
+
+    <!-- Bootstrap 5 (CSS) loaded from a CDN for the responsive grid & components -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    />
+    <!-- Bootstrap Icons for the small icons on buttons -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+        rel="stylesheet"
+    />
+
+    <!-- Our own stylesheet. url_for builds the correct /static/style.css path -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+    <!-- ============================= HEADER ============================= -->
+    <header class="app-header text-white text-center">
+        <div class="container">
+            <h1 class="mb-1"><i class="bi bi-check2-square"></i> Task Manager</h1>
+            <p class="mb-0 opacity-75">Organize your work, one task at a time.</p>
+        </div>
+    </header>
+
+    <main class="container my-4">
+
+        <!-- ===================== FLASH MESSAGES ====================== -->
+        <!-- Flask flash() messages (success / error) show up here -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- ===================== TOOLBAR ROW ========================= -->
+        <div class="row g-3 align-items-center mb-4">
+            <!-- Add Task button (opens the modal) -->
+            <div class="col-12 col-md-auto">
+                <button
+                    type="button"
+                    class="btn btn-primary w-100"
+                    data-bs-toggle="modal"
+                    data-bs-target="#taskModal"
+                    onclick="openAddModal()"
+                >
+                    <i class="bi bi-plus-lg"></i> Add Task
+                </button>
+            </div>
+
+            <!-- Search + filter form. It submits with GET so the URL holds the filters. -->
+            <div class="col-12 col-md">
+                <form class="row g-2" method="get" action="{{ url_for('index') }}">
+                    <div class="col-12 col-sm">
+                        <input
+                            type="text"
+                            name="search"
+                            class="form-control"
+                            placeholder="Search by title..."
+                            value="{{ current_search }}"
+                        />
+                    </div>
+                    <div class="col-6 col-sm-auto">
+                        <select name="priority" class="form-select">
+                            <option value="">All priorities</option>
+                            <option value="High"   {{ 'selected' if current_priority == 'High'   }}>High</option>
+                            <option value="Medium" {{ 'selected' if current_priority == 'Medium' }}>Medium</option>
+                            <option value="Low"    {{ 'selected' if current_priority == 'Low'    }}>Low</option>
+                        </select>
+                    </div>
+                    <div class="col-6 col-sm-auto">
+                        <select name="status" class="form-select">
+                            <option value="">All statuses</option>
+                            <option value="Pending"   {{ 'selected' if current_status == 'Pending'   }}>Pending</option>
+                            <option value="Completed" {{ 'selected' if current_status == 'Completed' }}>Completed</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-sm-auto d-flex gap-2">
+                        <button type="submit" class="btn btn-outline-secondary flex-fill">
+                            <i class="bi bi-search"></i> Filter
+                        </button>
+                        <!-- "Clear" simply links back to the home page with no query string -->
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary flex-fill">
+                            Clear
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ===================== TASK CARDS ========================== -->
+        {% if tasks %}
+            <div class="row g-3">
+                {% for task in tasks %}
+                    <!-- Each task is a responsive column: full width on phones, -->
+                    <!-- half on tablets, a third on large screens. -->
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <div class="card task-card h-100 priority-{{ task['priority']|lower }} {{ 'completed' if task['status'] == 'Completed' }}">
+                            <div class="card-body d-flex flex-column">
+
+                                <!-- Title + priority badge -->
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h5 class="card-title mb-0 task-title">{{ task['title'] }}</h5>
+                                    <span class="badge priority-badge priority-badge-{{ task['priority']|lower }}">
+                                        {{ task['priority'] }}
+                                    </span>
+                                </div>
+
+                                <!-- Description (only shown if it exists) -->
+                                {% if task['description'] %}
+                                    <p class="card-text text-muted">{{ task['description'] }}</p>
+                                {% endif %}
+
+                                <!-- Meta info: due date + status -->
+                                <ul class="list-unstyled small mb-3">
+                                    <li>
+                                        <i class="bi bi-calendar-event"></i>
+                                        Due:
+                                        {% if task['due_date'] %}
+                                            {{ task['due_date'] }}
+                                        {% else %}
+                                            <span class="text-muted">No date</span>
+                                        {% endif %}
+                                    </li>
+                                    <li>
+                                        <i class="bi bi-flag"></i>
+                                        Status:
+                                        <span class="badge status-badge status-{{ task['status']|lower }}">
+                                            {{ task['status'] }}
+                                        </span>
+                                    </li>
+                                </ul>
+
+                                <!-- Action buttons pushed to the bottom of the card -->
+                                <div class="mt-auto d-flex flex-wrap gap-2">
+
+                                    <!-- Toggle complete / pending -->
+                                    <form method="post" action="{{ url_for('toggle', task_id=task['id']) }}">
+                                        {% if task['status'] == 'Pending' %}
+                                            <button type="submit" class="btn btn-sm btn-success">
+                                                <i class="bi bi-check-lg"></i> Complete
+                                            </button>
+                                        {% else %}
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                                <i class="bi bi-arrow-counterclockwise"></i> Reopen
+                                            </button>
+                                        {% endif %}
+                                    </form>
+
+                                    <!-- Edit: passes the task id to JS, which fills the modal -->
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm btn-outline-primary"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#taskModal"
+                                        onclick="openEditModal({{ task['id'] }})"
+                                    >
+                                        <i class="bi bi-pencil"></i> Edit
+                                    </button>
+
+                                    <!-- Delete: JS shows a confirm() dialog before submitting -->
+                                    <form
+                                        method="post"
+                                        action="{{ url_for('delete', task_id=task['id']) }}"
+                                        onsubmit="return confirmDelete(event)"
+                                    >
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <!-- Shown when there are no tasks (or no search results) -->
+            <div class="text-center text-muted py-5">
+                <i class="bi bi-inbox display-1 d-block mb-3"></i>
+                <p class="fs-5">No tasks found. Click "Add Task" to create one.</p>
+            </div>
+        {% endif %}
+    </main>
+
+    <!-- ===================== ADD / EDIT MODAL ====================== -->
+    <!-- A single modal is reused for both adding and editing tasks. -->
+    <!-- JavaScript changes the form's action URL and title accordingly. -->
+    <div class="modal fade" id="taskModal" tabindex="-1" aria-labelledby="taskModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form id="taskForm" method="post" action="{{ url_for('add') }}">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="taskModalLabel">Add Task</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Title (required) -->
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Title <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="title" name="title" required />
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                        </div>
+
+                        <div class="row">
+                            <!-- Priority -->
+                            <div class="col-sm-6 mb-3">
+                                <label for="priority" class="form-label">Priority</label>
+                                <select class="form-select" id="priority" name="priority">
+                                    <option value="Low">Low</option>
+                                    <option value="Medium" selected>Medium</option>
+                                    <option value="High">High</option>
+                                </select>
+                            </div>
+
+                            <!-- Due date -->
+                            <div class="col-sm-6 mb-3">
+                                <label for="due_date" class="form-label">Due Date</label>
+                                <input type="date" class="form-control" id="due_date" name="due_date" />
+                            </div>
+                        </div>
+
+                        <!-- Status: only shown when editing (hidden for new tasks) -->
+                        <div class="mb-1" id="statusWrapper" style="display: none;">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="Pending">Pending</option>
+                                <option value="Completed">Completed</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="taskSubmitBtn">Save Task</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JavaScript bundle (needed for the modal & alerts) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Our own JavaScript -->
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

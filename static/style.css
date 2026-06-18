@@ -1,0 +1,86 @@
+/*
+ * style.css
+ * ---------
+ * Custom styling on top of Bootstrap. Bootstrap handles the responsive
+ * grid and base components; this file adds the colours, the header banner,
+ * the priority/status badges, and the little hover effects on cards.
+ */
+
+/* ---- Page background & base font ---- */
+body {
+    background-color: #f4f6fb;          /* soft light-grey background */
+    font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #2b2f38;
+}
+
+/* ---- Header banner ---- */
+.app-header {
+    /* A friendly purple-to-blue gradient */
+    background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+    padding: 2rem 1rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+}
+
+.app-header h1 {
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+/* ---- Task cards ---- */
+.task-card {
+    border: none;
+    border-radius: 14px;
+    /* The coloured left border is set per-priority below */
+    border-left: 6px solid #adb5bd;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Gentle lift effect when hovering over a card */
+.task-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* Coloured left border depending on priority */
+.task-card.priority-high   { border-left-color: #e63946; }  /* red    */
+.task-card.priority-medium { border-left-color: #f4a261; }  /* orange */
+.task-card.priority-low    { border-left-color: #2a9d8f; }  /* teal   */
+
+/* Completed tasks are faded and the title is struck through */
+.task-card.completed {
+    opacity: 0.7;
+    background-color: #f0fdf4;
+}
+.task-card.completed .task-title {
+    text-decoration: line-through;
+    color: #6c757d;
+}
+
+.task-title {
+    font-weight: 600;
+    word-break: break-word;   /* long titles wrap instead of overflowing */
+}
+
+/* ---- Priority badges (top-right of each card) ---- */
+.priority-badge {
+    font-size: 0.72rem;
+    padding: 0.35em 0.6em;
+}
+.priority-badge-high   { background-color: #e63946; color: #fff; }
+.priority-badge-medium { background-color: #f4a261; color: #fff; }
+.priority-badge-low    { background-color: #2a9d8f; color: #fff; }
+
+/* ---- Status badges ---- */
+.status-badge {
+    font-size: 0.72rem;
+}
+.status-pending   { background-color: #ffc107; color: #000; }
+.status-completed { background-color: #198754; color: #fff; }
+
+/* ---- Small responsive tweaks ---- */
+@media (max-width: 575.98px) {
+    .app-header h1 {
+        font-size: 1.5rem;
+    }
+}

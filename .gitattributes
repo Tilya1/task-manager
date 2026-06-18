@@ -1,0 +1,4 @@
+# Normalize line endings: store text files with LF in the repository,
+# check them out with the OS-native ending. Keeps diffs clean across
+# Windows, macOS and Linux.
+* text=auto eol=lf

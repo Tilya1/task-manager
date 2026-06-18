@@ -1,0 +1,36 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# ---- Virtual environments ----
+venv/
+env/
+.venv/
+ENV/
+
+# ---- SQLite database ----
+# The database is created automatically on first run, so it should not be
+# committed. Delete this line if you DO want to ship a pre-populated database.
+tasks.db
+*.sqlite3
+
+# ---- Flask ----
+instance/
+.webassets-cache
+
+# ---- Environment / secrets ----
+.env
+*.env
+
+# ---- Editors / IDEs ----
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ---- OS files ----
+.DS_Store
+Thumbs.db
+desktop.ini
