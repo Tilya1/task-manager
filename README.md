@@ -1,195 +1,141 @@
-# 📝 Task Manager
+# Task Manager
 
-A simple, modern, **production-ready web Task Manager** built with **Python Flask** and **SQLite**.
-Create, view, edit, delete, search, filter, and complete tasks — all from a clean, mobile-friendly interface.
+A fast, single-page task manager with smart lists, priorities, due dates and a
+detail panel with auto-save. Built with Flask and SQLite on the backend and
+plain JavaScript on the frontend, with no build step.
 
----
+The layout follows the familiar three-column pattern of modern task apps:
+smart lists on the left, the task list with a quick-add bar in the middle, and
+an editable detail panel on the right. Light and dark themes are included.
 
-## ✨ Features
+## Features
 
-- **Add tasks** with a Title (required), Description, Priority (Low / Medium / High) and Due Date
-- **View all tasks** in a responsive card layout
-- **Edit tasks** — every field can be updated, with existing values pre-filled
-- **Delete tasks** with a confirmation dialog
-- **Search** tasks by title
-- **Filter** tasks by priority and status
-- **Mark tasks** as Completed or reopen them as Pending
-- **Modern responsive UI** using Bootstrap 5 — works on phones, tablets and desktops
-- **Automatic database creation** with sample data on first run
+- **Quick add.** Type a title, pick a date and a priority, press Enter.
+  The bar pre-fills sensible defaults for the list you are in.
+- **Smart lists.** All, Today (including overdue), Next 7 Days, No Date,
+  Completed, and one list per priority, each with a live count.
+- **Grouping and sorting.** Tasks are grouped into Overdue, Today, Next 7 Days,
+  Later and No Date; sort by due date, priority, title or creation time.
+- **Detail panel.** Click a task to edit its title, description, date, priority
+  and status. Changes save automatically.
+- **Search.** Filters by title and description as you type.
+- **Priority-coloured checkboxes** and overdue highlighting.
+- **Light and dark themes** with the system preference as the default.
+- **Responsive.** On phones the sidebar and the detail panel become drawers.
+- **Keyboard.** `N` focuses the quick-add bar, `/` focuses search, `Esc`
+  closes panels.
 
----
+## Tech stack
 
-## 🧱 Tech Stack
+| Layer     | Technology                                   |
+|-----------|----------------------------------------------|
+| Backend   | Python 3.8+, Flask 3                          |
+| Database  | SQLite via the standard library               |
+| Frontend  | Vanilla JavaScript, CSS custom properties    |
+| Icons     | Bootstrap Icons (CDN)                        |
+| Server    | gunicorn (Render) or Vercel Python runtime   |
 
-| Layer     | Technology              |
-|-----------|-------------------------|
-| Backend   | Python, Flask           |
-| Database  | SQLite (built-in)       |
-| Frontend  | HTML, CSS, JavaScript   |
-| Templates | Jinja2                  |
-| Styling   | Bootstrap 5 + custom CSS|
-
----
-
-## 📂 Project Structure
-
-```
-task-manager/
-├── app.py              # Main Flask application (routes / controllers)
-├── database.py         # Database connection, table creation, CRUD helpers
-├── requirements.txt    # Python dependencies
-├── README.md           # This file
-├── tasks.db            # SQLite database (created automatically on first run)
-├── templates/
-│   └── index.html      # Main HTML page (Jinja template)
-└── static/
-    ├── style.css       # Custom styling
-    └── script.js       # Browser-side JavaScript (modal + confirm dialogs)
-```
-
-> **Where do the files go?**
-> Keep the exact structure above. `templates/` and `static/` are special folders
-> that Flask looks for automatically. `tasks.db` does **not** need to exist
-> beforehand — it is created the first time you run the app.
-
----
-
-## 🚀 Installation
-
-You need **Python 3.8 or newer** installed.
-
-1. **Get the project**
-
-   Copy the `task-manager` folder to your computer (or clone it), then open a
-   terminal inside that folder:
-
-   ```bash
-   cd task-manager
-   ```
-
-2. **(Recommended) Create a virtual environment**
-
-   On **Windows**:
-   ```bash
-   python -m venv venv
-   venv\Scripts\activate
-   ```
-
-   On **macOS / Linux**:
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   ```
-
-3. **Install the dependencies**
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
----
-
-## ▶️ Running the App
+## Quick start
 
 ```bash
+git clone https://github.com/Tilya1/task-manager.git
+cd task-manager
+python -m venv venv
+# Windows: venv\Scripts\activate   macOS/Linux: source venv/bin/activate
+pip install -r requirements.txt
 python app.py
 ```
 
-Then open your browser at:
+Open http://127.0.0.1:5000. The database file and a few sample tasks are
+created on first run.
+
+## Configuration
+
+All settings are environment variables. Every one of them is optional.
+
+| Variable        | Purpose                                              | Default                          |
+|-----------------|------------------------------------------------------|----------------------------------|
+| `PORT`          | Port for the local development server                | `5000`                           |
+| `SECRET_KEY`    | Signs the session cookie used for flash messages     | development placeholder          |
+| `DATABASE_PATH` | Location of the SQLite file                          | `./tasks.db` (`/tmp/tasks.db` on Vercel) |
+| `FLASK_DEBUG`   | `1` enables the reloader and debugger locally        | `1`                              |
+
+## API
+
+The frontend talks to the backend only through this JSON API, so it can be
+reused by other clients.
+
+| Method   | Endpoint                 | Description                                            |
+|----------|--------------------------|--------------------------------------------------------|
+| `GET`    | `/api/tasks`             | List tasks. Optional `search`, `priority`, `status`.   |
+| `POST`   | `/api/tasks`             | Create a task. Returns `201` with the new task.        |
+| `PUT`    | `/api/tasks/<id>`        | Update any subset of fields. Returns the task.         |
+| `POST`   | `/api/tasks/<id>/toggle` | Flip `Pending` and `Completed`. Returns the task.      |
+| `DELETE` | `/api/tasks/<id>`        | Delete a task. Returns `{"ok": true}`.                 |
+
+Task shape:
+
+```json
+{
+  "id": 1,
+  "title": "Finish project report",
+  "description": "Write the final section and proofread.",
+  "priority": "High",
+  "due_date": "2026-06-25",
+  "status": "Pending",
+  "created_at": "2026-06-18 15:35:58"
+}
+```
+
+Validation rules: `title` is required, `priority` is `Low`, `Medium` or
+`High`, `status` is `Pending` or `Completed`, `due_date` is `YYYY-MM-DD` or
+`null`. Invalid input returns `400` with `{"error": "..."}`.
+
+The classic form routes `POST /add`, `/edit/<id>`, `/delete/<id>` and
+`/toggle/<id>` are still available and redirect back to the page.
+
+## Deployment
+
+### Vercel
+
+The repository includes `vercel.json`, so importing it at
+https://vercel.com/new is enough. The Python runtime runs `app.py` as a
+serverless function and serves the static assets through Flask.
+
+Vercel's filesystem is read-only except for `/tmp`, so the SQLite file lives
+there and is **reset whenever the function is recycled**. That makes the
+Vercel deployment a live demo rather than persistent storage. For persistent
+data point `DATABASE_PATH` at a mounted disk on a host such as Render, or
+swap the storage layer in `database.py` for a hosted database.
+
+### Render
+
+`render.yaml` and `Procfile` are included. Create a Blueprint from the
+repository, or a Web Service with:
+
+- Build command: `pip install -r requirements.txt`
+- Start command: `gunicorn app:app --bind 0.0.0.0:$PORT`
+
+On the free plan the filesystem is ephemeral as well. Attach a persistent
+disk and set `DATABASE_PATH=/var/data/tasks.db` to keep the data.
+
+## Project structure
 
 ```
-http://127.0.0.1:5000
+task-manager/
+├── app.py               # Flask app: page route, JSON API, validation
+├── database.py          # SQLite connection, schema, CRUD helpers
+├── templates/
+│   └── index.html       # Application shell
+├── static/
+│   ├── style.css        # Layout, themes, components
+│   └── script.js        # State, rendering, API calls
+├── requirements.txt
+├── vercel.json          # Vercel deployment
+├── render.yaml          # Render deployment
+└── Procfile
 ```
 
-The database (`tasks.db`) and a few **sample tasks** are created automatically
-the first time you run the app.
+## License
 
-To stop the server, press `Ctrl + C` in the terminal.
-
----
-
-## 🧪 Sample Test Data
-
-On first run, the app inserts these example tasks so the page isn't empty:
-
-| Title                 | Priority | Due Date   | Status    |
-|-----------------------|----------|------------|-----------|
-| Finish project report | High     | 2026-06-25 | Pending   |
-| Buy groceries         | Low      | 2026-06-20 | Pending   |
-| Team meeting          | Medium   | 2026-06-19 | Completed |
-| Pay electricity bill  | High     | 2026-06-22 | Pending   |
-
-> Want a clean slate? Just delete the `tasks.db` file and restart the app —
-> it will be recreated with the sample data again.
-
----
-
-## 🔗 Routes Overview
-
-| Method | URL                 | Purpose                                  |
-|--------|---------------------|------------------------------------------|
-| GET    | `/`                 | Show all tasks (supports search/filter)  |
-| POST   | `/add`              | Create a new task                        |
-| POST   | `/edit/<id>`        | Update an existing task                  |
-| POST   | `/delete/<id>`      | Delete a task                            |
-| POST   | `/toggle/<id>`      | Mark a task complete / pending           |
-| GET    | `/api/task/<id>`    | Return one task as JSON (for edit modal) |
-
----
-
-## ☁️ Deploy to Render.com
-
-This repo is ready to deploy on [Render](https://render.com) — it includes a
-`render.yaml` blueprint, a `Procfile`, and `gunicorn` (a production server).
-
-**Option A — Blueprint (easiest):**
-
-1. Push this project to GitHub (already done if you cloned it from there).
-2. In the [Render dashboard](https://dashboard.render.com), click
-   **New → Blueprint**.
-3. Connect your GitHub account and select the `task-manager` repository.
-4. Render reads `render.yaml`, sets everything up, and clicks **Apply**.
-5. When the build finishes, open the `https://<your-app>.onrender.com` URL.
-
-**Option B — Manual Web Service:**
-
-1. **New → Web Service**, connect the repo.
-2. Set:
-   - **Build Command:** `pip install -r requirements.txt`
-   - **Start Command:** `gunicorn app:app --bind 0.0.0.0:$PORT`
-3. (Optional) Add an env var `SECRET_KEY` with any long random string.
-4. Click **Create Web Service**.
-
-> ⚠️ **Important — data persistence.**
-> Render's **free** tier has an *ephemeral* filesystem: the `tasks.db` file is
-> **wiped on every redeploy or restart**, and the sample data is recreated.
-> That's fine for a demo. To keep your data permanently you must either:
-> - attach a **persistent disk** (paid plan) — uncomment the `disk:` block and
->   the `DATABASE_PATH` env var in `render.yaml`, **or**
-> - switch the storage to a managed **PostgreSQL** database.
->
-> The app reads the optional `DATABASE_PATH` environment variable, so you can
-> point SQLite at a mounted disk (e.g. `/var/data/tasks.db`) without code changes.
-
-**Environment variables the app understands:**
-
-| Variable        | Purpose                                          | Default          |
-|-----------------|--------------------------------------------------|------------------|
-| `PORT`          | Port to listen on (Render sets this for you)     | `5000`           |
-| `SECRET_KEY`    | Secret used to sign sessions / flash messages    | a dev placeholder|
-| `DATABASE_PATH` | Where the SQLite file lives (use for a disk)     | `./tasks.db`     |
-
----
-
-## ❓ Troubleshooting
-
-- **`python` not found** → try `python3` instead.
-- **Port 5000 already in use** → edit the last line of `app.py`:
-  `app.run(debug=True, port=5001)` and open `http://127.0.0.1:5001`.
-- **Want to reset everything** → delete `tasks.db` and run `python app.py` again.
-
----
-
-## 📜 License
-
-Free to use for learning and personal projects. Enjoy! 🎉
+MIT

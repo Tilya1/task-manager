@@ -2,261 +2,177 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <!-- Makes the page responsive / mobile friendly -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Task Manager</title>
 
-    <!-- Bootstrap 5 (CSS) loaded from a CDN for the responsive grid & components -->
-    <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-        rel="stylesheet"
-    />
-    <!-- Bootstrap Icons for the small icons on buttons -->
+    <!-- Apply the saved theme before the first paint so the page never flashes white -->
+    <script>
+        (function () {
+            try {
+                var saved = localStorage.getItem("tm-theme");
+                var dark = saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+                if (dark) document.documentElement.setAttribute("data-theme", "dark");
+            } catch (e) {}
+        })();
+    </script>
+
+    <!-- Icon font only; all layout and styling is in static/style.css -->
     <link
         href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
         rel="stylesheet"
     />
-
-    <!-- Our own stylesheet. url_for builds the correct /static/style.css path -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
 <body>
-    <!-- ============================= HEADER ============================= -->
-    <header class="app-header text-white text-center">
-        <div class="container">
-            <h1 class="mb-1"><i class="bi bi-check2-square"></i> Task Manager</h1>
-            <p class="mb-0 opacity-75">Organize your work, one task at a time.</p>
-        </div>
-    </header>
+    <div class="app" id="app">
 
-    <main class="container my-4">
-
-        <!-- ===================== FLASH MESSAGES ====================== -->
-        <!-- Flask flash() messages (success / error) show up here -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        <!-- ===================== TOOLBAR ROW ========================= -->
-        <div class="row g-3 align-items-center mb-4">
-            <!-- Add Task button (opens the modal) -->
-            <div class="col-12 col-md-auto">
-                <button
-                    type="button"
-                    class="btn btn-primary w-100"
-                    data-bs-toggle="modal"
-                    data-bs-target="#taskModal"
-                    onclick="openAddModal()"
-                >
-                    <i class="bi bi-plus-lg"></i> Add Task
+        <!-- ============================ SIDEBAR ============================ -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-top">
+                <div class="brand">
+                    <span class="brand-mark"><i class="bi bi-check2"></i></span>
+                    <span>Task Manager</span>
+                </div>
+                <button type="button" class="icon-btn" id="themeToggle" title="Toggle theme" aria-label="Toggle theme">
+                    <i class="bi bi-moon"></i>
                 </button>
             </div>
 
-            <!-- Search + filter form. It submits with GET so the URL holds the filters. -->
-            <div class="col-12 col-md">
-                <form class="row g-2" method="get" action="{{ url_for('index') }}">
-                    <div class="col-12 col-sm">
-                        <input
-                            type="text"
-                            name="search"
-                            class="form-control"
-                            placeholder="Search by title..."
-                            value="{{ current_search }}"
-                        />
-                    </div>
-                    <div class="col-6 col-sm-auto">
-                        <select name="priority" class="form-select">
-                            <option value="">All priorities</option>
-                            <option value="High"   {{ 'selected' if current_priority == 'High'   }}>High</option>
-                            <option value="Medium" {{ 'selected' if current_priority == 'Medium' }}>Medium</option>
-                            <option value="Low"    {{ 'selected' if current_priority == 'Low'    }}>Low</option>
+            <label class="search">
+                <i class="bi bi-search"></i>
+                <input type="search" id="searchInput" placeholder="Search" autocomplete="off" />
+            </label>
+
+            <nav class="nav">
+                <button type="button" class="nav-item" data-view="all">
+                    <i class="bi bi-inbox"></i><span class="nav-label">All</span><span class="nav-count" data-count="all"></span>
+                </button>
+                <button type="button" class="nav-item" data-view="today">
+                    <i class="bi bi-calendar-check"></i><span class="nav-label">Today</span><span class="nav-count" data-count="today"></span>
+                </button>
+                <button type="button" class="nav-item" data-view="week">
+                    <i class="bi bi-calendar-week"></i><span class="nav-label">Next 7 Days</span><span class="nav-count" data-count="week"></span>
+                </button>
+                <button type="button" class="nav-item" data-view="nodate">
+                    <i class="bi bi-calendar-x"></i><span class="nav-label">No Date</span><span class="nav-count" data-count="nodate"></span>
+                </button>
+                <button type="button" class="nav-item" data-view="completed">
+                    <i class="bi bi-check-circle"></i><span class="nav-label">Completed</span><span class="nav-count" data-count="completed"></span>
+                </button>
+
+                <div class="nav-title">Priority</div>
+                <button type="button" class="nav-item" data-view="p-high">
+                    <i class="bi bi-flag-fill flag-high"></i><span class="nav-label">High</span><span class="nav-count" data-count="p-high"></span>
+                </button>
+                <button type="button" class="nav-item" data-view="p-medium">
+                    <i class="bi bi-flag-fill flag-medium"></i><span class="nav-label">Medium</span><span class="nav-count" data-count="p-medium"></span>
+                </button>
+                <button type="button" class="nav-item" data-view="p-low">
+                    <i class="bi bi-flag-fill flag-low"></i><span class="nav-label">Low</span><span class="nav-count" data-count="p-low"></span>
+                </button>
+            </nav>
+        </aside>
+
+        <!-- ============================ MAIN ============================== -->
+        <main class="main">
+            <header class="main-header">
+                <button type="button" class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">
+                    <i class="bi bi-list"></i>
+                </button>
+                <h1 class="view-title" id="viewTitle">All</h1>
+                <span class="view-subtitle" id="viewSubtitle"></span>
+                <div class="header-actions">
+                    <label class="sort">
+                        <i class="bi bi-arrow-down-up"></i>
+                        <select id="sortSelect" aria-label="Sort tasks">
+                            <option value="default">Default</option>
+                            <option value="date">Due date</option>
+                            <option value="priority">Priority</option>
+                            <option value="title">Title</option>
+                            <option value="created">Created</option>
                         </select>
-                    </div>
-                    <div class="col-6 col-sm-auto">
-                        <select name="status" class="form-select">
-                            <option value="">All statuses</option>
-                            <option value="Pending"   {{ 'selected' if current_status == 'Pending'   }}>Pending</option>
-                            <option value="Completed" {{ 'selected' if current_status == 'Completed' }}>Completed</option>
-                        </select>
-                    </div>
-                    <div class="col-12 col-sm-auto d-flex gap-2">
-                        <button type="submit" class="btn btn-outline-secondary flex-fill">
-                            <i class="bi bi-search"></i> Filter
-                        </button>
-                        <!-- "Clear" simply links back to the home page with no query string -->
-                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary flex-fill">
-                            Clear
-                        </a>
-                    </div>
-                </form>
+                    </label>
+                </div>
+            </header>
+
+            <!-- Quick add bar -->
+            <form class="add-bar" id="addForm" autocomplete="off">
+                <i class="bi bi-plus-lg add-icon"></i>
+                <input type="text" id="addTitle" placeholder="Add task" maxlength="200" />
+                <!-- Off-screen submit button so Enter submits the form natively -->
+                <button type="submit" class="visually-hidden" tabindex="-1" aria-hidden="true">Add</button>
+                <div class="add-tools">
+                    <label class="date-chip" id="addDateChip" title="Due date">
+                        <i class="bi bi-calendar3"></i>
+                        <span class="date-chip-text" id="addDateText"></span>
+                        <input type="date" id="addDate" />
+                    </label>
+                    <button type="button" class="flag-btn" id="addPriorityBtn" data-priority="Medium" title="Priority">
+                        <i class="bi bi-flag-fill"></i>
+                    </button>
+                </div>
+            </form>
+
+            <div class="task-list" id="taskList"></div>
+
+            <div class="empty hidden" id="emptyState">
+                <i class="bi bi-clipboard-check"></i>
+                <p id="emptyText">Nothing here. Add a task above.</p>
             </div>
-        </div>
+        </main>
 
-        <!-- ===================== TASK CARDS ========================== -->
-        {% if tasks %}
-            <div class="row g-3">
-                {% for task in tasks %}
-                    <!-- Each task is a responsive column: full width on phones, -->
-                    <!-- half on tablets, a third on large screens. -->
-                    <div class="col-12 col-md-6 col-lg-4">
-                        <div class="card task-card h-100 priority-{{ task['priority']|lower }} {{ 'completed' if task['status'] == 'Completed' }}">
-                            <div class="card-body d-flex flex-column">
+        <!-- ============================ DETAIL PANEL ======================= -->
+        <aside class="detail" id="detail">
+            <header class="detail-header">
+                <button type="button" class="check" id="detailCheck" aria-label="Toggle complete"><i class="bi bi-check"></i></button>
+                <label class="date-chip" title="Due date">
+                    <i class="bi bi-calendar3"></i>
+                    <span class="date-chip-text" id="detailDateText">Date</span>
+                    <input type="date" id="detailDate" />
+                </label>
+                <button type="button" class="flag-btn" id="detailPriorityBtn" data-priority="Medium" title="Priority">
+                    <i class="bi bi-flag-fill"></i>
+                </button>
+                <span class="spacer"></span>
+                <button type="button" class="icon-btn" id="detailClose" aria-label="Close">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </header>
 
-                                <!-- Title + priority badge -->
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <h5 class="card-title mb-0 task-title">{{ task['title'] }}</h5>
-                                    <span class="badge priority-badge priority-badge-{{ task['priority']|lower }}">
-                                        {{ task['priority'] }}
-                                    </span>
-                                </div>
-
-                                <!-- Description (only shown if it exists) -->
-                                {% if task['description'] %}
-                                    <p class="card-text text-muted">{{ task['description'] }}</p>
-                                {% endif %}
-
-                                <!-- Meta info: due date + status -->
-                                <ul class="list-unstyled small mb-3">
-                                    <li>
-                                        <i class="bi bi-calendar-event"></i>
-                                        Due:
-                                        {% if task['due_date'] %}
-                                            {{ task['due_date'] }}
-                                        {% else %}
-                                            <span class="text-muted">No date</span>
-                                        {% endif %}
-                                    </li>
-                                    <li>
-                                        <i class="bi bi-flag"></i>
-                                        Status:
-                                        <span class="badge status-badge status-{{ task['status']|lower }}">
-                                            {{ task['status'] }}
-                                        </span>
-                                    </li>
-                                </ul>
-
-                                <!-- Action buttons pushed to the bottom of the card -->
-                                <div class="mt-auto d-flex flex-wrap gap-2">
-
-                                    <!-- Toggle complete / pending -->
-                                    <form method="post" action="{{ url_for('toggle', task_id=task['id']) }}">
-                                        {% if task['status'] == 'Pending' %}
-                                            <button type="submit" class="btn btn-sm btn-success">
-                                                <i class="bi bi-check-lg"></i> Complete
-                                            </button>
-                                        {% else %}
-                                            <button type="submit" class="btn btn-sm btn-outline-secondary">
-                                                <i class="bi bi-arrow-counterclockwise"></i> Reopen
-                                            </button>
-                                        {% endif %}
-                                    </form>
-
-                                    <!-- Edit: passes the task id to JS, which fills the modal -->
-                                    <button
-                                        type="button"
-                                        class="btn btn-sm btn-outline-primary"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#taskModal"
-                                        onclick="openEditModal({{ task['id'] }})"
-                                    >
-                                        <i class="bi bi-pencil"></i> Edit
-                                    </button>
-
-                                    <!-- Delete: JS shows a confirm() dialog before submitting -->
-                                    <form
-                                        method="post"
-                                        action="{{ url_for('delete', task_id=task['id']) }}"
-                                        onsubmit="return confirmDelete(event)"
-                                    >
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">
-                                            <i class="bi bi-trash"></i> Delete
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                {% endfor %}
+            <div class="detail-body">
+                <input type="text" class="detail-title" id="detailTitle" placeholder="Title" maxlength="200" />
+                <textarea class="detail-desc" id="detailDesc" placeholder="Description" rows="8"></textarea>
             </div>
-        {% else %}
-            <!-- Shown when there are no tasks (or no search results) -->
-            <div class="text-center text-muted py-5">
-                <i class="bi bi-inbox display-1 d-block mb-3"></i>
-                <p class="fs-5">No tasks found. Click "Add Task" to create one.</p>
-            </div>
-        {% endif %}
-    </main>
 
-    <!-- ===================== ADD / EDIT MODAL ====================== -->
-    <!-- A single modal is reused for both adding and editing tasks. -->
-    <!-- JavaScript changes the form's action URL and title accordingly. -->
-    <div class="modal fade" id="taskModal" tabindex="-1" aria-labelledby="taskModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <form id="taskForm" method="post" action="{{ url_for('add') }}">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="taskModalLabel">Add Task</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <!-- Title (required) -->
-                        <div class="mb-3">
-                            <label for="title" class="form-label">Title <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="title" name="title" required />
-                        </div>
-
-                        <!-- Description -->
-                        <div class="mb-3">
-                            <label for="description" class="form-label">Description</label>
-                            <textarea class="form-control" id="description" name="description" rows="3"></textarea>
-                        </div>
-
-                        <div class="row">
-                            <!-- Priority -->
-                            <div class="col-sm-6 mb-3">
-                                <label for="priority" class="form-label">Priority</label>
-                                <select class="form-select" id="priority" name="priority">
-                                    <option value="Low">Low</option>
-                                    <option value="Medium" selected>Medium</option>
-                                    <option value="High">High</option>
-                                </select>
-                            </div>
-
-                            <!-- Due date -->
-                            <div class="col-sm-6 mb-3">
-                                <label for="due_date" class="form-label">Due Date</label>
-                                <input type="date" class="form-control" id="due_date" name="due_date" />
-                            </div>
-                        </div>
-
-                        <!-- Status: only shown when editing (hidden for new tasks) -->
-                        <div class="mb-1" id="statusWrapper" style="display: none;">
-                            <label for="status" class="form-label">Status</label>
-                            <select class="form-select" id="status" name="status">
-                                <option value="Pending">Pending</option>
-                                <option value="Completed">Completed</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary" id="taskSubmitBtn">Save Task</button>
-                    </div>
-                </form>
-            </div>
-        </div>
+            <footer class="detail-footer">
+                <span class="detail-meta" id="detailMeta"></span>
+                <span class="spacer"></span>
+                <button type="button" class="icon-btn danger" id="detailDelete" title="Delete task" aria-label="Delete task">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </footer>
+        </aside>
     </div>
 
-    <!-- Bootstrap JavaScript bundle (needed for the modal & alerts) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Our own JavaScript -->
+    <!-- Shared priority picker (positioned next to whichever flag was clicked) -->
+    <div class="popover hidden" id="priorityPopover" role="menu">
+        <button type="button" class="popover-item" data-priority="High"><i class="bi bi-flag-fill flag-high"></i> High</button>
+        <button type="button" class="popover-item" data-priority="Medium"><i class="bi bi-flag-fill flag-medium"></i> Medium</button>
+        <button type="button" class="popover-item" data-priority="Low"><i class="bi bi-flag-fill flag-low"></i> Low</button>
+    </div>
+
+    <!-- Dimmed backdrop used on small screens when the sidebar / detail panel is open -->
+    <div class="scrim" id="scrim"></div>
+
+    <div class="toast hidden" id="toast"></div>
+
+    <!-- Flash messages from the classic form routes are shown as toasts -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="flash-msg" data-category="{{ category }}" hidden>{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
+
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

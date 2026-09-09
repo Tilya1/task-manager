@@ -20,13 +20,16 @@ import os
 # We build it from this file's location so the app works no matter where
 # you run `python app.py` from.
 #
-# On a host like Render you can set the DATABASE_PATH environment variable to
-# point at a mounted persistent disk (e.g. /var/data/tasks.db) so the data
-# survives redeploys. If the variable is not set, we fall back to a local file.
+# Set the DATABASE_PATH environment variable to control where the file lives
+# (for example a mounted persistent disk on Render). Without it we fall back
+# to a local file next to this module. On Vercel the project directory is
+# read-only, so the fallback there is the writable /tmp directory; that
+# storage is ephemeral, see README.
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATABASE_PATH = os.environ.get(
-    "DATABASE_PATH", os.path.join(BASE_DIR, "tasks.db")
+_DEFAULT_PATH = (
+    "/tmp/tasks.db" if os.environ.get("VERCEL") else os.path.join(BASE_DIR, "tasks.db")
 )
+DATABASE_PATH = os.environ.get("DATABASE_PATH", _DEFAULT_PATH)
 
 
 def get_connection():

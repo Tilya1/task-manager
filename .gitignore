@@ -24,6 +24,9 @@ instance/
 .env
 *.env
 
+# ---- Deployment ----
+.vercel/
+
 # ---- Editors / IDEs ----
 .vscode/
 .idea/
