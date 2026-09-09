@@ -1,5 +1,7 @@
 # Task Manager
 
+**Live demo:** https://task-manager-nu-sand-11.vercel.app
+
 A fast, single-page task manager with smart lists, priorities, due dates and a
 detail panel with auto-save. Built with Flask and SQLite on the backend and
 plain JavaScript on the frontend, with no build step.
